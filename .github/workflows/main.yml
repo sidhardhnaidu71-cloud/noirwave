@@ -35,19 +35,11 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-                - name: Accept Android SDK licenses
-        shell: bash
-        run: |
-          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)"
-          test -n "$SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses
+          yes | sdkmanager --licenses
 
       - name: Install Android SDK packages
-        shell: bash
-        run: |
-          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)"
-          test -n "$SDKMANAGER"
-          "$SDKMANAGER" --install "platforms;android-34" "build-tools;34.0.0"
+        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
+
       - name: Generate Android project
         shell: bash
         run: |
