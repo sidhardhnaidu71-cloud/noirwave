@@ -34,10 +34,11 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+
       - name: Install Android SDK packages
-        run: |
-          sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
-          yes | sdkmanager --licenses >/dev/null || true
+        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
 
       - name: Generate Android project
         shell: bash
@@ -499,4 +500,163 @@ jobs:
                       Spacer(Modifier.height(22.dp))
                       BasicTextField(
                           value = query,
-          
+                          onValueChange = { query = it },
+                          singleLine = true,
+                          textStyle = androidx.compose.ui.text.TextStyle(
+                              color = Color.White,
+                              fontSize = 16.sp
+                          ),
+                          modifier = Modifier
+                              .fillMaxWidth()
+                              .background(NoirCard, RoundedCornerShape(14.dp))
+                              .padding(horizontal = 16.dp, vertical = 15.dp),
+                          decorationBox = { inner ->
+                              if (query.isEmpty()) {
+                                  Text("Search songs or artists", color = Color.Gray)
+                              }
+                              inner()
+                          }
+                      )
+                      Spacer(Modifier.height(18.dp))
+                      Text(
+                          "YOUR LIBRARY  ·  ${filtered.size}",
+                          color = Color.Gray,
+                          fontSize = 11.sp,
+                          letterSpacing = 2.sp
+                      )
+                      Spacer(Modifier.height(10.dp))
+
+                      if (filtered.isEmpty()) {
+                          Text(
+                              if (tracks.isEmpty()) "No local music found. Allow audio access and add music to your phone."
+                              else "No songs match your search.",
+                              color = Color.LightGray,
+                              modifier = Modifier.padding(vertical = 24.dp)
+                          )
+                      }
+
+                      LazyColumn(
+                          modifier = Modifier.weight(1f),
+                          verticalArrangement = Arrangement.spacedBy(8.dp)
+                      ) {
+                          items(filtered, key = { it.id }) { track ->
+                              Row(
+                                  modifier = Modifier
+                                      .fillMaxWidth()
+                                      .background(NoirCard, RoundedCornerShape(14.dp))
+                                      .clickable { onTrackClick(track) }
+                                      .padding(14.dp),
+                                  verticalAlignment = Alignment.CenterVertically
+                              ) {
+                                  Surface(
+                                      color = Color(0xFF252116),
+                                      shape = RoundedCornerShape(10.dp),
+                                      modifier = Modifier.size(44.dp)
+                                  ) {
+                                      androidx.compose.foundation.layout.Box(
+                                          contentAlignment = Alignment.Center
+                                      ) {
+                                          Text("♫", color = NoirGold, fontSize = 23.sp)
+                                      }
+                                  }
+                                  Column(
+                                      modifier = Modifier
+                                          .weight(1f)
+                                          .padding(start = 12.dp)
+                                  ) {
+                                      Text(
+                                          track.title,
+                                          color = Color.White,
+                                          fontWeight = FontWeight.SemiBold,
+                                          maxLines = 1,
+                                          overflow = TextOverflow.Ellipsis
+                                      )
+                                      Text(
+                                          track.artist,
+                                          color = Color.Gray,
+                                          fontSize = 12.sp,
+                                          maxLines = 1,
+                                          overflow = TextOverflow.Ellipsis
+                                      )
+                                  }
+                                  Text("▶", color = NoirGold)
+                              }
+                          }
+                      }
+
+                      Spacer(Modifier.height(12.dp))
+                      Column(
+                          modifier = Modifier
+                              .fillMaxWidth()
+                              .background(NoirCard, RoundedCornerShape(20.dp))
+                              .padding(16.dp)
+                      ) {
+                          Text(
+                              "NOW PLAYING",
+                              color = NoirGold,
+                              fontSize = 10.sp,
+                              letterSpacing = 2.sp
+                          )
+                          Spacer(Modifier.height(7.dp))
+                          Text(
+                              title,
+                              color = Color.White,
+                              fontSize = 17.sp,
+                              fontWeight = FontWeight.Bold,
+                              maxLines = 1,
+                              overflow = TextOverflow.Ellipsis
+                          )
+                          Text(
+                              artist,
+                              color = Color.Gray,
+                              fontSize = 12.sp,
+                              maxLines = 1,
+                              overflow = TextOverflow.Ellipsis
+                          )
+                          Spacer(Modifier.height(8.dp))
+                          Row(
+                              modifier = Modifier.fillMaxWidth(),
+                              horizontalArrangement = Arrangement.Center,
+                              verticalAlignment = Alignment.CenterVertically
+                          ) {
+                              Button(onClick = onPrevious) { Text("|◀") }
+                              Spacer(Modifier.size(12.dp))
+                              Button(onClick = onToggle) {
+                                  Text(if (isPlaying) "Ⅱ  Pause" else "▶  Play")
+                              }
+                              Spacer(Modifier.size(12.dp))
+                              Button(onClick = onNext) { Text("▶|") }
+                          }
+                      }
+                  }
+              }
+          }
+          EOF
+
+      - name: Save generated Android source files to repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gradle.properties settings.gradle.kts build.gradle.kts app .gitignore
+          if git diff --cached --quiet; then
+            echo "Generated project files are already up to date."
+          else
+            git commit -m "Generate Noirwave Android project"
+            git push
+          fi
+
+      - name: Compile debug APK
+        run: gradle --no-daemon --stacktrace clean assembleDebug
+
+      - name: Verify APK exists
+        run: test -s app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Noirwave-debug-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
