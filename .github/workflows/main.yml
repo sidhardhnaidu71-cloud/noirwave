@@ -31,11 +31,11 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses
+        shell: bash
+        run: |
+          set -o pipefail
+          yes | sdkmanager --licenses
 
       - name: Install Android SDK packages
         run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
